@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Totais PBI – Backlog DevOps (Scroll Auto)
+// @name         DevOps Backlog Totals Panel
 // @namespace    http://tampermonkey.net/
-// @version      3.1
-// @description  Soma Effort e Actuals To Date no backlog, com scroll automático e botão de atualização manual.
+// @version      1.0.0
+// @description  Calculates Effort and Actuals To Date from Azure DevOps Backlog. Includes floating panel, auto-scroll, and manual refresh button.
 // @author       Jorge Ramos
 // @match        https://dev.azure.com/*
 // @grant        none
@@ -13,84 +13,96 @@
 
     if (!window.location.href.includes('backlog')) return;
 
-    const painel = document.createElement('div');
-    painel.id = '__painelJorge';
-    painel.style.position = 'fixed';
-    painel.style.bottom = '30px';
-    painel.style.right = '20px';
-    painel.style.background = 'rgba(30,30,30,0.7)';
-    painel.style.color = '#fff';
-    painel.style.padding = '14px 18px';
-    painel.style.fontFamily = 'Segoe UI, sans-serif';
-    painel.style.fontSize = '14px';
-    painel.style.fontWeight = 'bold';
-    painel.style.borderRadius = '10px';
-    painel.style.boxShadow = '0 0 10px rgba(0,0,0,0.4)';
-    painel.style.zIndex = '9999';
-    painel.style.lineHeight = '1.6';
-    painel.style.maxWidth = '300px';
+    // Create floating panel
+    const totalsPanel = document.createElement('div');
+    totalsPanel.id = 'backlog-totals-panel';
+    totalsPanel.style.position = 'fixed';
+    totalsPanel.style.bottom = '30px';
+    totalsPanel.style.right = '20px';
+    totalsPanel.style.background = 'rgba(30, 30, 30, 0.7)';
+    totalsPanel.style.color = '#fff';
+    totalsPanel.style.padding = '14px 18px';
+    totalsPanel.style.fontFamily = 'Segoe UI, sans-serif';
+    totalsPanel.style.fontSize = '14px';
+    totalsPanel.style.fontWeight = 'bold';
+    totalsPanel.style.borderRadius = '10px';
+    totalsPanel.style.boxShadow = '0 0 10px rgba(0,0,0,0.4)';
+    totalsPanel.style.zIndex = '9999';
+    totalsPanel.style.lineHeight = '1.6';
+    totalsPanel.style.maxWidth = '300px';
 
-    const valoresDiv = document.createElement('div');
-    valoresDiv.id = '__valoresJorge';
+    // Content wrapper for totals
+    const totalsContent = document.createElement('div');
+    totalsContent.id = 'backlog-totals-content';
 
-    const botao = document.createElement('button');
-    botao.textContent = '🔁 Atualizar Totais';
-    botao.style.marginTop = '10px';
-    botao.style.background = '#0078d4';
-    botao.style.color = '#fff';
-    botao.style.border = 'none';
-    botao.style.padding = '6px 12px';
-    botao.style.borderRadius = '6px';
-    botao.style.cursor = 'pointer';
-    botao.style.fontWeight = 'normal';
+    // Manual refresh button
+    const refreshButton = document.createElement('button');
+    refreshButton.textContent = '🔁 Update Totals';
+    refreshButton.style.marginTop = '10px';
+    refreshButton.style.background = '#0078d4';
+    refreshButton.style.color = '#fff';
+    refreshButton.style.border = 'none';
+    refreshButton.style.padding = '6px 12px';
+    refreshButton.style.borderRadius = '6px';
+    refreshButton.style.cursor = 'pointer';
+    refreshButton.style.fontWeight = 'normal';
 
-    painel.appendChild(valoresDiv);
-    painel.appendChild(botao);
-    document.body.appendChild(painel);
+    totalsPanel.appendChild(totalsContent);
+    totalsPanel.appendChild(refreshButton);
+    document.body.appendChild(totalsPanel);
 
-    function scrollAll(callback) {
+    // Scroll through backlog to load all PBIs
+    function scrollBacklogToBottom(callback) {
         const container = document.querySelector('.bolt-scrollable-content') || document.querySelector('.scroll.scroll-horizontal.scroll-auto');
         if (!container) return callback();
 
-        let tries = 0;
-        const maxTries = 20;
+        let attempts = 0;
+        const maxAttempts = 20;
         const interval = setInterval(() => {
             container.scrollBy(0, 2000);
-            tries++;
+            attempts++;
 
-            if (tries >= maxTries || container.scrollHeight - container.scrollTop <= container.clientHeight + 10) {
+            const nearBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 20;
+            if (attempts >= maxAttempts || nearBottom) {
                 clearInterval(interval);
                 setTimeout(callback, 2000);
             }
         }, 400);
     }
 
-    function calcularTotais() {
+    // Calculates totals from visible PBIs
+    function calculateBacklogTotals() {
         let totalEffort = 0;
         let totalActuals = 0;
-        const linhas = document.querySelectorAll('[role="row"]');
-        linhas.forEach(linha => {
-            const celulas = linha.querySelectorAll('[role="gridcell"]');
-            const actualsText = celulas[5]?.innerText.trim();
-            const effortText = celulas[6]?.innerText.trim();
+
+        const rows = document.querySelectorAll('[role="row"]');
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('[role="gridcell"]');
+
+            const actualsText = cells[5]?.innerText.trim();
+            const effortText  = cells[6]?.innerText.trim();
+
             const actualsVal = parseFloat(actualsText);
-            const effortVal = parseFloat(effortText);
+            const effortVal  = parseFloat(effortText);
+
             if (!isNaN(actualsVal)) totalActuals += actualsVal;
             if (!isNaN(effortVal)) totalEffort += effortVal;
         });
 
-        valoresDiv.innerHTML = `
+        totalsContent.innerHTML = `
             <div>🔢 <strong>Total Effort:</strong> ${totalEffort}</div>
             <div>⏱️ <strong>Actuals To Date:</strong> ${totalActuals}</div>
         `;
     }
 
-    botao.addEventListener('click', () => {
-        valoresDiv.innerHTML = `<div>⏳ Loading all PBIs...</div>`;
-        scrollAll(calcularTotais);
+    // Refresh logic: scroll then calculate
+    refreshButton.addEventListener('click', () => {
+        totalsContent.innerHTML = `<div>⏳ Loading PBIs...</div>`;
+        scrollBacklogToBottom(calculateBacklogTotals);
     });
 
+    // First auto-run after page loads
     setTimeout(() => {
-        scrollAll(calcularTotais);
+        scrollBacklogToBottom(calculateBacklogTotals);
     }, 4000);
 })();
