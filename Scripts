@@ -1,0 +1,96 @@
+// ==UserScript==
+// @name         Totais PBI – Backlog DevOps (Scroll Auto)
+// @namespace    http://tampermonkey.net/
+// @version      3.1
+// @description  Soma Effort e Actuals To Date no backlog, com scroll automático e botão de atualização manual.
+// @author       Jorge Ramos
+// @match        https://dev.azure.com/*
+// @grant        none
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    if (!window.location.href.includes('backlog')) return;
+
+    const painel = document.createElement('div');
+    painel.id = '__painelJorge';
+    painel.style.position = 'fixed';
+    painel.style.bottom = '30px';
+    painel.style.right = '20px';
+    painel.style.background = 'rgba(30,30,30,0.7)';
+    painel.style.color = '#fff';
+    painel.style.padding = '14px 18px';
+    painel.style.fontFamily = 'Segoe UI, sans-serif';
+    painel.style.fontSize = '14px';
+    painel.style.fontWeight = 'bold';
+    painel.style.borderRadius = '10px';
+    painel.style.boxShadow = '0 0 10px rgba(0,0,0,0.4)';
+    painel.style.zIndex = '9999';
+    painel.style.lineHeight = '1.6';
+    painel.style.maxWidth = '300px';
+
+    const valoresDiv = document.createElement('div');
+    valoresDiv.id = '__valoresJorge';
+
+    const botao = document.createElement('button');
+    botao.textContent = '🔁 Atualizar Totais';
+    botao.style.marginTop = '10px';
+    botao.style.background = '#0078d4';
+    botao.style.color = '#fff';
+    botao.style.border = 'none';
+    botao.style.padding = '6px 12px';
+    botao.style.borderRadius = '6px';
+    botao.style.cursor = 'pointer';
+    botao.style.fontWeight = 'normal';
+
+    painel.appendChild(valoresDiv);
+    painel.appendChild(botao);
+    document.body.appendChild(painel);
+
+    function scrollAll(callback) {
+        const container = document.querySelector('.bolt-scrollable-content') || document.querySelector('.scroll.scroll-horizontal.scroll-auto');
+        if (!container) return callback();
+
+        let tries = 0;
+        const maxTries = 20;
+        const interval = setInterval(() => {
+            container.scrollBy(0, 2000);
+            tries++;
+
+            if (tries >= maxTries || container.scrollHeight - container.scrollTop <= container.clientHeight + 10) {
+                clearInterval(interval);
+                setTimeout(callback, 2000);
+            }
+        }, 400);
+    }
+
+    function calcularTotais() {
+        let totalEffort = 0;
+        let totalActuals = 0;
+        const linhas = document.querySelectorAll('[role="row"]');
+        linhas.forEach(linha => {
+            const celulas = linha.querySelectorAll('[role="gridcell"]');
+            const actualsText = celulas[5]?.innerText.trim();
+            const effortText = celulas[6]?.innerText.trim();
+            const actualsVal = parseFloat(actualsText);
+            const effortVal = parseFloat(effortText);
+            if (!isNaN(actualsVal)) totalActuals += actualsVal;
+            if (!isNaN(effortVal)) totalEffort += effortVal;
+        });
+
+        valoresDiv.innerHTML = `
+            <div>🔢 <strong>Total Effort:</strong> ${totalEffort}</div>
+            <div>⏱️ <strong>Actuals To Date:</strong> ${totalActuals}</div>
+        `;
+    }
+
+    botao.addEventListener('click', () => {
+        valoresDiv.innerHTML = `<div>⏳ Loading all PBIs...</div>`;
+        scrollAll(calcularTotais);
+    });
+
+    setTimeout(() => {
+        scrollAll(calcularTotais);
+    }, 4000);
+})();
