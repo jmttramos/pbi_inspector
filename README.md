@@ -41,18 +41,18 @@ If your backlog columns are in a different order, adjust the indexes inside the 
 
 ## 📚 Documentation
 
-For advanced usage, customization and troubleshooting, see the [Wiki](https://github.com/your-repo/wiki)
+For advanced usage, customization and troubleshooting, see the [Wiki]([https://github.com/your-repo/wiki](https://github.com/jmttramos/pbi_inspector/wiki))
 
 ---
 
 ## 📦 Releases
 
-Latest version: [`v1.0.0`](https://github.com/your-repo/releases/tag/v1.0.0)  
+Latest version: [`v1.0.0`](https://github.com/jmttramos/pbi_inspector/releases/edit/v1.0.0)  
 Includes scroll automation and manual refresh button.
 
 ---
 
 ## 👤 Author
 
-Made by [Jorge Ramos](https://github.com/your-username)  
+Made by [Jorge Ramos]([https://github.com/your-username](https://github.com/jmttramos))  
 Built to help teams gain faster visibility during sprint planning and backlog grooming.
